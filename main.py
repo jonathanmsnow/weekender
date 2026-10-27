@@ -23,7 +23,7 @@ def get_current_datetime() -> str:
     return result
 
 @tool
-def nh_events(start_date: str, end_date: str, page_number: int = 1) -> str:
+def nh_events(start_date: str, end_date: str, page_number: int = 1) -> tuple[str, int]:
     """Get events from the Visit NH API for a given date range.
     
     Args:
@@ -32,7 +32,7 @@ def nh_events(start_date: str, end_date: str, page_number: int = 1) -> str:
         page_number: Page number for pagination, defaults to 1
     
     Returns:
-        List of events with titles and dates, or error message.
+        List of events with titles and dates, or error message and number of hits.
     
     Example dates: "2026-02-01T00:00:00" for start, "2026-02-28T23:59:59" for end
     """
@@ -55,20 +55,22 @@ def nh_events(start_date: str, end_date: str, page_number: int = 1) -> str:
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=10)
         if response.status_code == 200:
+            hits = response.json().get("hits", 0)
+            print(f"🔧 [DEBUG] API response hits: {hits}")
             events = response.json().get("results", [])
             if not events:
                 result = "No events found for the specified date range."
             else:
                 result = "\n".join([f"- {event['title']} on {event['startDate']}" for event in events[:10]])
             print(f"🔧 [DEBUG] Found {len(events)} events")
-            return result
+            return result, hits
         else:
             result = f"Error fetching events: {response.status_code}"
             print(f"🔧 [DEBUG] {result}")
-            return result
+            return result, 0
     except Exception as e:
         print(f"🔧 [DEBUG] Exception: {str(e)}")
-        return f"Error: {str(e)}"
+        return f"Error: {str(e)}", 0
 
 model = init_chat_model(
     "llama3.2:3b",
